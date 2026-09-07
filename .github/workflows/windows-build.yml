@@ -32,7 +32,7 @@ jobs:
           $process = Start-Process -FilePath 'dist/SoftenantVideoStudio/SoftenantVideoStudio.exe' -PassThru -Wait
           if ($process.ExitCode -ne 0) { throw "Packaged application failed: $($process.ExitCode)" }
       - name: Build MCP service
-        run: python -m PyInstaller --noconfirm --clean --console --onedir --name SoftenantStudioMCP --collect-all imageio_ffmpeg --collect-all mcp mcp_main.py
+        run: python -m PyInstaller --noconfirm --clean --console --onedir --name SoftenantStudioMCP --collect-all imageio_ffmpeg --collect-data mcp --copy-metadata mcp --collect-submodules uvicorn --hidden-import anyio._backends._asyncio mcp_main.py
       - name: Verify packaged MCP protocol
         run: python scripts/smoke_mcp_exe.py dist/SoftenantStudioMCP/SoftenantStudioMCP.exe
       - name: Include MCP service and launchers

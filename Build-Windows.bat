@@ -10,7 +10,7 @@ if not exist ".venv\Scripts\python.exe" (
 if errorlevel 1 goto failed
 .venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --windowed --onedir --name SoftenantVideoStudio --collect-all imageio_ffmpeg main.py
 if errorlevel 1 goto failed
-.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --console --onedir --name SoftenantStudioMCP --collect-all imageio_ffmpeg --collect-all mcp mcp_main.py
+.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --console --onedir --name SoftenantStudioMCP --collect-all imageio_ffmpeg --collect-data mcp --copy-metadata mcp --collect-submodules uvicorn --hidden-import anyio._backends._asyncio mcp_main.py
 if errorlevel 1 goto failed
 .venv\Scripts\python.exe scripts\smoke_mcp_exe.py dist\SoftenantStudioMCP\SoftenantStudioMCP.exe
 if errorlevel 1 goto failed
