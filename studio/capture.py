@@ -29,6 +29,12 @@ def monitors():
     callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HANDLE,wintypes.HDC,
                                       ctypes.POINTER(wintypes.RECT),wintypes.LPARAM)
     user32 = ctypes.windll.user32
+    try:
+        # The MCP companion has no Qt application to establish DPI awareness.
+        # Already-aware GUI processes keep their existing setting.
+        user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+    except AttributeError:
+        pass
     user32.GetMonitorInfoW.argtypes = [wintypes.HANDLE,ctypes.POINTER(Info)]
     user32.GetMonitorInfoW.restype = wintypes.BOOL
     user32.EnumDisplayMonitors.argtypes = [wintypes.HDC,ctypes.POINTER(wintypes.RECT),callback_type,wintypes.LPARAM]

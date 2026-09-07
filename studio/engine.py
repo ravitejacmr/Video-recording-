@@ -11,6 +11,9 @@ from functools import lru_cache
 from PIL import Image, ImageDraw, ImageFont
 from .model import Project
 
+# Do not let a disguised playlist fetch URLs or recursively open other files.
+LOCAL_MEDIA_INPUT = ['-protocol_whitelist', 'file,pipe', '-format_whitelist',
+                     'mov,matroska,webm,avi,mpegts,mp3,wav,aac,flac,ogg,image2,png_pipe,jpeg_pipe,bmp_pipe,webp_pipe']
 
 class Cancelled(Exception):
     pass
@@ -36,7 +39,7 @@ def subprocess_options():
 
 @lru_cache(maxsize=256)
 def _probe(path, modified, size):
-    result = subprocess.run([ffmpeg_path(), '-hide_banner', '-i', path],
+    result = subprocess.run([ffmpeg_path(), '-hide_banner', *LOCAL_MEDIA_INPUT, '-i', path],
                             capture_output=True, text=True, errors='replace',
                             timeout=30, **subprocess_options())
     info = result.stderr
@@ -131,7 +134,7 @@ class Renderer:
                 media = str(Path(workdir) / f'title-{index}.png')
                 title_image(clip, width, height, media)
             if is_still:
-                args += ['-loop', '1', '-framerate', str(fps), '-t', f'{clip.duration:.8f}', '-i', media]
+                args += ['-loop', '1', '-framerate', str(fps), '-t', f'{clip.duration:.8f}', *LOCAL_MEDIA_INPUT, '-i', media]
                 info = {'audio': False, 'video': True}
             else:
                 info = probe(media)
@@ -141,7 +144,7 @@ class Renderer:
                     raise ValueError(f'{clip.name}: no audio stream found.')
                 if info['duration'] <= 0 or clip.source_out > info['duration'] + .08:
                     raise ValueError(f'{clip.name}: trim end exceeds the source duration.')
-                args += ['-ss', f'{clip.source_in:.8f}', '-t', f'{clip.source_out - clip.source_in:.8f}', '-i', media]
+                args += ['-ss', f'{clip.source_in:.8f}', '-t', f'{clip.source_out - clip.source_in:.8f}', *LOCAL_MEDIA_INPUT, '-i', media]
             if clip.kind != 'audio':
                 chain = [f'setpts=(PTS-STARTPTS)/{1 if is_still else clip.speed:.8f}', f'fps={fps}']
                 if clip.crop:

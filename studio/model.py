@@ -137,7 +137,7 @@ class Project:
         data['clips'] = [Clip(**c) for c in data.get('clips', [])]
         return cls(**data)
 
-    def save(self, path):
+    def save(self, path, expected_revision=None):
         path = Path(path).resolve()
         data = self.to_dict()
         for c in data['clips']:
@@ -147,9 +147,17 @@ class Project:
                         c[key] = os.path.relpath(c[key], path.parent)
                     except ValueError:  # Windows media on another drive
                         c[key] = str(Path(c[key]).resolve())
-        temp = path.with_name(path.name + '.tmp')
-        temp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8')
-        os.replace(temp, path)
+        from filelock import FileLock
+        import hashlib
+        with FileLock(str(path)+'.lock', timeout=5):
+            if expected_revision is not None:
+                current = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+                if current != expected_revision:
+                    raise ValueError('Project changed in another editor. Reload it or Save as a new project.')
+            temp = path.with_name(path.name + '.tmp')
+            temp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8')
+            os.replace(temp, path)
+            return hashlib.sha256(path.read_bytes()).hexdigest()
 
     @classmethod
     def load(cls, path):

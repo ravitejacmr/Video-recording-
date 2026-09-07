@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import tempfile
 import threading
+import hashlib
 from PySide6.QtCore import Qt, QUrl, QThread, Signal, QTimer, QStandardPaths
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -192,6 +193,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.project, self.history = Project(), History()
         self.selected, self.project_path, self.dirty = '', '', False
+        self.saved_revision = None
         self.worker, self.render_engine = None, None
         self.preview_offset, self.preview_valid = 0, False
         self.playhead, self.source_clip = 0, None
@@ -206,6 +208,9 @@ class MainWindow(QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.autosave)
         self.timer.start(30000)
+        self.sync_timer = QTimer(self)
+        self.sync_timer.timeout.connect(self.reload_external_changes)
+        self.sync_timer.start(2000)
         if recover and self.autosave_path.is_file():
             QTimer.singleShot(0,self.recover)
 
@@ -225,6 +230,8 @@ class MainWindow(QMainWindow):
         filemenu.addSeparator()
         self.action(filemenu,'Import media…',self.import_media,'Ctrl+I')
         self.action(filemenu,'Record screen…',self.record_screen,'Ctrl+R')
+        self.action(filemenu,'Open MCP workspace',self.open_mcp_workspace)
+        self.action(filemenu,'Open MCP project…',self.open_mcp_project)
         self.action(filemenu,'Import subtitles (.srt)…',self.import_srt)
         self.action(filemenu,'Export subtitles (.srt)…',self.export_srt)
         self.action(filemenu,'Export video…',self.export_video,'Ctrl+E')
@@ -354,6 +361,43 @@ class MainWindow(QMainWindow):
 
     def get_clip(self):
         return next((c for c in self.project.clips if c.id==self.selected),None)
+
+    def open_mcp_workspace(self):
+        from .mcp_service import StudioService
+        service = StudioService()
+        self.open_folder(service.root)
+        service.close()
+
+    def open_mcp_project(self):
+        if not self.can_edit() or not self.confirm_discard(): return
+        from .mcp_service import workspace_path
+        path,_ = QFileDialog.getOpenFileName(self,'Open MCP project',str(workspace_path()/'Projects'),'Softenant project (*.svs)')
+        if path: self.load_project_file(path)
+
+    def load_project_file(self,path):
+        try:
+            raw = Path(path).read_bytes()
+            project = Project.load(path)
+            if Path(path).read_bytes()!=raw: raise ValueError('Project changed while opening. Try again.')
+        except Exception as e: return self.error(str(e))
+        self.project,self.project_path,self.history = project,str(path),History()
+        self.saved_revision = hashlib.sha256(raw).hexdigest()
+        self.selected,self.playhead = '',0
+        self.changed()
+        self.dirty = False
+        self.refresh()
+        self.seek(0)
+
+    def reload_external_changes(self):
+        if not self.project_path or not self.saved_revision or self.busy(): return
+        try: current = hashlib.sha256(Path(self.project_path).read_bytes()).hexdigest()
+        except OSError: return
+        if current==self.saved_revision: return
+        if self.dirty:
+            self.statusBar().showMessage('This project changed through MCP. Save your edits as a new project or reopen it.')
+            return
+        self.load_project_file(self.project_path)
+        self.statusBar().showMessage('Project refreshed from MCP changes.')
 
     def busy(self):
         return self.worker is not None
@@ -703,6 +747,7 @@ class MainWindow(QMainWindow):
         self.player.setSource(QUrl())
         self.project,self.history = Project(),History()
         self.project_path,self.selected,self.dirty = '','',False
+        self.saved_revision = None
         self.preview_valid,self.source_clip,self.playhead = False,None,0
         self.autosave_path.unlink(missing_ok=True)
         self.refresh()
@@ -713,12 +758,7 @@ class MainWindow(QMainWindow):
         if not self.can_edit() or not self.confirm_discard(): return
         path,_ = QFileDialog.getOpenFileName(self,'Open project','','Softenant project (*.svs)')
         if not path: return
-        try: project = Project.load(path)
-        except Exception as e: return self.error(str(e))
-        self.project,self.project_path,self.history = project,path,History()
-        self.selected,self.playhead = '',0
-        self.changed()
-        self.dirty = False
+        self.load_project_file(path)
         self.autosave_path.unlink(missing_ok=True)
         self.refresh()
         self.seek(0)
@@ -730,8 +770,10 @@ class MainWindow(QMainWindow):
             if not path: return False
             if not path.lower().endswith('.svs'): path += '.svs'
         try:
-            self.project.name = Path(path).stem
-            self.project.save(path)
+            if save_as or not self.project_path: self.project.name = Path(path).stem
+            expected = self.saved_revision if path==self.project_path else None
+            self.project.save(path,expected_revision=expected)
+            self.saved_revision = hashlib.sha256(Path(path).read_bytes()).hexdigest()
             self.project_path,self.dirty = path,False
             self.autosave_path.unlink(missing_ok=True)
             self.refresh()
@@ -788,6 +830,7 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         self.timer.stop()
+        self.sync_timer.stop()
         self.player.stop()
         self.player.setSource(QUrl())
         self.autosave_path.unlink(missing_ok=True)
@@ -804,6 +847,9 @@ def main():
     app.setStyleSheet(STYLE)
     smoke = os.environ.get('STUDIO_SMOKE_TEST') == '1'
     window = MainWindow(recover=not smoke)
+    if '--project' in sys.argv:
+        index = sys.argv.index('--project')
+        if index+1<len(sys.argv): window.load_project_file(sys.argv[index+1])
     window.show()
     if smoke:
         QTimer.singleShot(750, app.quit)

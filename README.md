@@ -1,6 +1,10 @@
 # Softenant Video Studio
 
-A Windows desktop video editor built for layered course videos, promotional clips and social posts. **Version 0.1.0 is an early working release**, with a native Qt interface and an FFmpeg rendering engine.
+A Windows desktop video editor built for layered course videos, promotional clips and social posts. **Version 0.2.0 is an early working release**, with a native Qt interface and an FFmpeg rendering engine.
+
+## ChatGPT Work plugin / MCP
+
+Version 0.2 adds 24 MCP tools for video/audio editing, previews, export and optional recording. See [MCP-SETUP.md](MCP-SETUP.md). The updated portable package includes the MCP service and connection wizard. Final connection requires setup on your Windows PC and your OpenAI tunnel credentials.
 
 ## Start on Windows
 

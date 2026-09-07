@@ -30,3 +30,12 @@ The GitHub Actions workflow runs the same tests on Windows, packages a portable 
 - Third-party LUT varieties and multilingual font shaping.
 
 CPU encoding and rendered previews are implemented. GPU export, live composited previews, system-audio capture and a standalone voice-only recorder are not implemented.
+
+
+## Version 0.2 MCP integration
+
+32 automated tests pass locally after the MCP update. Added checks cover 24-tool discovery and real calls through stdio and Streamable HTTP, structured responses, unsupported operations, hostile Origin rejection, path traversal and embedded project-path restrictions, disguised playlist rejection, opt-in recording, revision checks, undo protection across external edits, GUI refresh/conflict behavior, and verified tunnel ZIP extraction. The existing real video/audio export and screen-recording process tests remain in the suite.
+
+The updated Windows workflow repeats all tests, builds both the editor and MCP executable, starts the GUI, and verifies the frozen MCP server by initializing it, listing tools and creating a project through its stdio transport.
+
+OpenAI tunnel account association, runtime-key permissions and end-to-end calls from the user's ChatGPT account to their physical Windows PC cannot be verified from this cloud workspace. The connection wizard and MCP-SETUP.md complete the handoff for that local step. No tunnel credentials or registered account connection were created here.

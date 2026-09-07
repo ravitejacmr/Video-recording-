@@ -10,3 +10,7 @@ dist/
 *.svs
 *.tmp
 .env
+
+*.lock
+tunnel-client/
+connection.json

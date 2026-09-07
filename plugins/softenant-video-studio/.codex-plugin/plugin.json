@@ -1,0 +1,18 @@
+{
+  "name": "softenant-video-studio",
+  "version": "0.2.0",
+  "description": "Edit Windows video projects, mix audio, render previews and export through a local MCP service.",
+  "author": {
+    "name": "Softenant Technologies"
+  },
+  "interface": {
+    "displayName": "Softenant Video Studio",
+    "shortDescription": "Control the Windows video editor with MCP.",
+    "longDescription": "Create and edit timeline projects, mix music, add titles, preview and export MP4. Screen recording is available when enabled on the Windows PC.",
+    "developerName": "Softenant Technologies",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "List my media and help me edit a video with Softenant Video Studio."
+  },
+  "mcpServers": "./.mcp.json"
+}

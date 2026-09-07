@@ -17,7 +17,7 @@ jobs:
           python-version: '3.12'
           cache: pip
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt pytest==8.4.2 pyinstaller==6.16.0
+        run: python -m pip install -r requirements-mcp.txt pytest==8.4.2 pyinstaller==6.16.0
       - name: Test model, real exports and interface
         env:
           QT_QPA_PLATFORM: offscreen
@@ -31,6 +31,16 @@ jobs:
           $env:STUDIO_SMOKE_TEST = '1'
           $process = Start-Process -FilePath 'dist/SoftenantVideoStudio/SoftenantVideoStudio.exe' -PassThru -Wait
           if ($process.ExitCode -ne 0) { throw "Packaged application failed: $($process.ExitCode)" }
+      - name: Build MCP service
+        run: python -m PyInstaller --noconfirm --clean --console --onedir --name SoftenantStudioMCP --collect-all imageio_ffmpeg --collect-all mcp mcp_main.py
+      - name: Verify packaged MCP protocol
+        run: python scripts/smoke_mcp_exe.py dist/SoftenantStudioMCP/SoftenantStudioMCP.exe
+      - name: Include MCP service and launchers
+        shell: pwsh
+        run: |
+          Move-Item dist/SoftenantStudioMCP dist/SoftenantVideoStudio/MCP
+          Copy-Item Start-MCP.bat, Start-MCP-With-Recording.bat, Connect-ChatGPT.bat, MCP-SETUP.md dist/SoftenantVideoStudio/
+          Copy-Item plugins dist/SoftenantVideoStudio/plugins -Recurse
       - name: Include documentation and dependency notices
         shell: pwsh
         run: |

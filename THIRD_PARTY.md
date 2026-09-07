@@ -12,3 +12,7 @@ Dependencies retain their own terms:
 - **PyInstaller** (build tool): GPL with bootloader exception. https://pyinstaller.org/en/stable/license.html
 
 GitHub packaging copies installed Python dependency license/notice metadata into `dependency-licenses`. This automated collection is not a substitute for reviewing component-specific binary/source redistribution requirements before publishing a wider software release.
+
+- **MCP Python SDK**: MIT; https://github.com/modelcontextprotocol/python-sdk.
+- **filelock**: Unlicense; https://github.com/tox-dev/filelock.
+- **OpenAI tunnel-client**: downloaded separately by the optional wizard from official releases, with its own included license notices. It is not embedded in this repository or application artifact. https://github.com/openai/tunnel-client

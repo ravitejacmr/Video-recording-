@@ -65,3 +65,31 @@ def test_scrollbars_and_recording_dialog(tmp_path):
     dialog.reject()
     window.close()
     app.processEvents()
+
+
+def test_external_mcp_edits_refresh_and_protect_local_changes(tmp_path,monkeypatch):
+    from studio.mcp_service import StudioService
+    app = QApplication.instance() or QApplication([])
+    app.setOrganizationName('SoftenantTests')
+    app.setApplicationName('TestStudio')
+    service = StudioService(tmp_path/'workspace')
+    data = service.create_project('Shared project')
+    window = MainWindow(recover=False)
+    window.autosave_path = tmp_path/'recovery.svs'
+    window.load_project_file(service.project_file(data['project_id']))
+    data = service.add_title(data['project_id'],data['revision'],'MCP title',0,2)
+    window.reload_external_changes()
+    assert window.project.clips[0].text=='MCP title'
+    window.project.clips[0].text='Unsaved local title'
+    window.dirty = True
+    data = service.update_clip(data['project_id'],data['revision'],data['clips'][0]['id'],{'text':'New remote title'})
+    window.reload_external_changes()
+    assert window.project.clips[0].text=='Unsaved local title'
+    errors = []
+    monkeypatch.setattr(window,'error',errors.append)
+    assert not window.save_project()
+    assert errors and 'changed' in errors[0]
+    assert service.get_project(data['project_id'])['clips'][0]['text']=='New remote title'
+    window.dirty = False
+    window.close()
+    service.close()
