@@ -1,0 +1,45 @@
+name: Windows editor build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt pytest==8.4.2 pyinstaller==6.16.0
+      - name: Test model, real exports and interface
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest -q
+      - name: Build portable Windows application
+        run: python -m PyInstaller --noconfirm --clean --windowed --onedir --name SoftenantVideoStudio --collect-all imageio_ffmpeg main.py
+      - name: Verify packaged executable starts
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $env:STUDIO_SMOKE_TEST = '1'
+          $process = Start-Process -FilePath 'dist/SoftenantVideoStudio/SoftenantVideoStudio.exe' -PassThru -Wait
+          if ($process.ExitCode -ne 0) { throw "Packaged application failed: $($process.ExitCode)" }
+      - name: Include documentation and dependency notices
+        shell: pwsh
+        run: |
+          Copy-Item README.md, THIRD_PARTY.md, VALIDATION.md dist/SoftenantVideoStudio/
+          python scripts/dependency_notices.py dist/SoftenantVideoStudio/dependency-licenses
+      - name: Upload Windows app
+        uses: actions/upload-artifact@v4
+        with:
+          name: SoftenantVideoStudio-Windows-x64
+          path: dist/SoftenantVideoStudio/
+          retention-days: 30
+          if-no-files-found: error
